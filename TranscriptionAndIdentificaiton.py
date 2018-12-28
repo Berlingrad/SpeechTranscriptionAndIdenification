@@ -8,7 +8,9 @@ class TIApp(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
 
+        self.title("Transcription and Identification")
         self.title_font = tkfont.Font(family='Helvetica', size=18, weight="bold", slant="italic")
+        self.geometry("768x432")
 
         # the container is where we'll stack a bunch of frames
         # on top of each other, then the one we want visible
@@ -19,7 +21,7 @@ class TIApp(tk.Tk):
         container.grid_columnconfigure(0, weight=1)
 
         self.frames = {}
-        for F in (StartPage, PageOne, PageTwo):
+        for F in (StartPage, AddProfile, Identify):
             page_name = F.__name__
             frame = F(parent=container, controller=self)
             self.frames[page_name] = frame
@@ -42,37 +44,39 @@ class StartPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
-        label = tk.Label(self, text="This is the start page", font=controller.title_font)
+        label = tk.Label(self, text="Welcome", font=controller.title_font)
         label.pack(side="top", fill="x", pady=10)
 
-        button1 = tk.Button(self, text="Go to Page One",
-                            command=lambda: controller.show_frame("PageOne"))
-        button2 = tk.Button(self, text="Go to Page Two",
-                            command=lambda: controller.show_frame("PageTwo"))
+        button1 = tk.Button(self, text="Add a New Speaker Profile",
+                            command=lambda: controller.show_frame("AddProfile"),
+                            width = 50)
+        button2 = tk.Button(self, text="Process an Audio",
+                            command=lambda: controller.show_frame("Identify"),
+                            width = 50)
         button1.pack()
         button2.pack()
 
 
-class PageOne(tk.Frame):
+class AddProfile(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
-        label = tk.Label(self, text="This is page 1", font=controller.title_font)
+        label = tk.Label(self, text="Add a new speaker profile", font=controller.title_font)
         label.pack(side="top", fill="x", pady=10)
-        button = tk.Button(self, text="Go to the start page",
+        button = tk.Button(self, text="Go back to Main Menu",
                            command=lambda: controller.show_frame("StartPage"))
         button.pack()
 
 
-class PageTwo(tk.Frame):
+class Identify(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.controller = controller
-        label = tk.Label(self, text="This is page 2", font=controller.title_font)
+        label = tk.Label(self, text="Audio Processing", font=controller.title_font)
         label.pack(side="top", fill="x", pady=10)
-        button = tk.Button(self, text="Go to the start page",
+        button = tk.Button(self, text="Go back to Main Menu",
                            command=lambda: controller.show_frame("StartPage"))
         button.pack()
 
