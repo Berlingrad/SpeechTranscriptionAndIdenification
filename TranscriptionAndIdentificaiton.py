@@ -1,11 +1,13 @@
 import tkinter as tk                # python 3
 from tkinter import font  as tkfont # python 3
-import pyaudio, wave, CreateProfile, json, EnrollProfile
+import pyaudio, wave, CreateProfile, json, EnrollProfile, utils, websocketSpeech, wave_utils, produceWave, time, threading, os, sys, IdentifyFile, PrintAllProfiles
+
+from tkinter.filedialog import askopenfilename
 
 #import Tkinter as tk     # python 2
 #import tkFont as tkfont  # python 2
 
-speakerProfiles = {'7f459648-ee2e-4903-91b4-0145a1bafb88':'grace'}
+##speakerProfiles = {'7f459648-ee2e-4903-91b4-0145a1bafb88':'grace'}
 
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
@@ -18,7 +20,35 @@ Audio = pyaudio.PyAudio()
 Frames = []
 stream = None
 
+IMPORTED_FILE = ''
+
 SUB_KEY = '583b8f19ffa24b27b6868f4c2e4b1611'
+
+# Replace the subscriptionKey string value with your valid subscription key.
+pay_key = '2ed2a4769d5c41fd9fdd771d74721f9e'
+api_key = 'df3d3d0c608548e6872c3d6ec96dcf5a'
+##api_key_asia = 'a584b4af890b4614a651b3fee9f83019'
+
+# Token请求地址
+AUTH_URL = 'https://westus.api.cognitive.microsoft.com/sts/v1.0/issueToken'
+ASIA_AUTH_URL = 'https://eastasia.api.cognitive.microsoft.com/sts/v1.0/issuetoken'
+BING_AUTH_URL = 'https://api.cognitive.microsoft.com/sts/v1.0/issueToken'
+
+#end point
+#host = 'wss://speech.platform.bing.com'
+api_host = 'wss://westus.stt.speech.microsoft.com'
+bing_host = 'wss://speech.platform.bing.com'
+asia_host = 'wss://eastasia.stt.speech.microsoft.com'
+rest_host = 'https://westus.stt.speech.microsoft.com'
+#conversation 适合做交互回话
+#interactive 适合实现Rest API，单次应答
+path = '/speech/recognition/conversation/cognitiveservices/v1'
+params = '?language=zh-CN'
+
+#west URL
+url = api_host+path+params
+key = api_key
+auth_url = AUTH_URL
 
 
 class TIApp(tk.Tk):
@@ -115,8 +145,6 @@ class AddProfile(tk.Frame):
 
 
 
-
-
         tk.Frame.__init__(self, parent)
         self.controller = controller
         label = tk.Label(self, text="Add a new speaker profile", font=controller.title_font)
@@ -152,6 +180,61 @@ class Identify(tk.Frame):
 
     def __init__(self, parent, controller):
         def _importFile():
+            IMPORTED_FILE = askopenfilename()
+            print("Selected file: ", IMPORTED_FILE)
+            ##print(type(IMPORTED_FILE))
+
+        ##def _process():
+
+            print(IMPORTED_FILE)
+            webCMD = 'python websocketSpeech.py '+IMPORTED_FILE
+            print(webCMD)
+            os.system("%s %s %s" % ('python', 'websocketSpeech.py', IMPORTED_FILE))
+
+            indexFile = 'index.txt'
+            cacheFile = 'output.txt'
+            i = 1
+            indexFp = open(indexFile, 'w', encoding='utf-8')
+            with open(cacheFile, 'r', encoding='utf-8') as load_f:
+               lines = load_f.readlines()
+               for j in lines:
+                   parsed = json.loads(j)
+                   text = parsed['DisplayText']
+                   startTime = parsed['Offset'] / 10000000
+                   length = parsed['Duration'] / 10000000
+                   ##print(
+                   cmd = "ffmpeg -ss {2} -t {3} -i  {0} -y -nostdin -f wav -ar 16000 -ac 1 -acodec pcm_s16le AudioSegments/{1:05d}.wav ".format(
+                           IMPORTED_FILE, i, startTime, length)
+                   ##)
+                   os.system(cmd)
+
+                   indexFp.write("{0:09d}\t{1}\n".format(i, parsed['DisplayText']))
+                   i += 1
+
+            indexFp.close()
+            print("exe")
+            display.config(state='normal')
+            display.delete(1.0, 'end')
+            with open(indexFile, 'r') as c:
+               content = c.readlines()
+               for i, line in enumerate(content):
+                   text = line.split('\t')[-1]
+                   index = line.split('\t')[0][4:]
+                   print(index)
+                   ids = PrintAllProfiles.print_all_profiles(SUB_KEY)
+                   returned_p_id = IdentifyFile.identify_file(SUB_KEY, 'AudioSegments/%s.wav' % index, 'true', ids)
+                   with open('SpeakerProfiles.json') as sp:
+                       names = json.load(sp)
+                   returned_name = names[returned_p_id]
+                   final_text = "{0}: \t".format(returned_name) + text
+
+                   display.insert('end', final_text)
+
+
+
+            display.config(state='disabled')
+
+
 
 
         tk.Frame.__init__(self, parent)
@@ -176,10 +259,12 @@ class Identify(tk.Frame):
 
 
 
-        importButton = tk.Button(self, text="Import a Audio file", width=20)
+        importButton = tk.Button(self, text="Import a Audio file", width=20,
+                                 command=_importFile)
         importButton.pack(side='top', fill ='y', pady = 10)
 
-        processButton = tk.Button(self, text="Process", width=20)
+        processButton = tk.Button(self, text="Process", width=20,
+                                  command = _importFile)
         processButton.pack(side='top', fill='y', pady=10)
 
 if __name__ == "__main__":

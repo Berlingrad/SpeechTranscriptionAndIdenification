@@ -43,10 +43,11 @@ def print_all_profiles(subscription_key):
         subscription_key)
 
     profiles = helper.get_all_profiles()
-
+    profile_ids = []
     print('Profile ID, Locale, Enrollment Speech Time, Remaining Enrollment Speech Time,'
           ' Created Date Time, Last Action Date Time, Enrollment Status')
     for profile in profiles:
+        profile_ids.append(profile.get_profile_id())
         print('{0}, {1}, {2}, {3}, {4}, {5}, {6}'.format(
             profile.get_profile_id(),
             profile.get_locale(),
@@ -55,6 +56,7 @@ def print_all_profiles(subscription_key):
             profile.get_created_date_time(),
             profile.get_last_action_date_time(),
             profile.get_enrollment_status()))
+    return profile_ids
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
