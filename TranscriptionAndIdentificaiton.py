@@ -1,6 +1,7 @@
 import tkinter as tk                # python 3
 from tkinter import font  as tkfont # python 3
-import pyaudio, wave
+import pyaudio, wave, CreateProfile, json, EnrollProfile
+
 #import Tkinter as tk     # python 2
 #import tkFont as tkfont  # python 2
 
@@ -11,9 +12,13 @@ CHANNELS = 1
 RATE = 16000
 CHUNK = 1024
 RECORD_SECONDS = 5
+WAVE_OUTPUT_FILENAME = "output.wav"
 
 Audio = pyaudio.PyAudio()
+Frames = []
 stream = None
+
+SUB_KEY = '583b8f19ffa24b27b6868f4c2e4b1611'
 
 
 class TIApp(tk.Tk):
@@ -77,14 +82,36 @@ class AddProfile(tk.Frame):
         def _createProfile():
             name = nameEntry.get()
             nameEntry.delete(0, 'end')
+            id = CreateProfile.create_profile(SUB_KEY, 'zh-CN')
+            print(type(id))
+            
+            with open('SpeakerProfiles.json') as jf:
+                jDecoded = json.load(jf)
+            jDecoded.update({id:name})
+            with open('SpeakerProfiles.json', 'w') as jf:
+                json.dump(jDecoded, jf)
+                
+            EnrollProfile.enroll_profile(SUB_KEY, id, WAVE_OUTPUT_FILENAME, 'true')
+
+
         def _startRecord():
             stream = Audio.open(format=FORMAT, channels=CHANNELS,
                                 rate=RATE, input=True,
                                 frames_per_buffer=CHUNK)
+            data = stream.read(CHUNK)
+
+            Frames.append(data)
         def _stopRecord():
             stream.stop_stream()
             stream.close()
             Audio.terminate()
+
+            waveFile = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
+            waveFile.setnchannels(CHANNELS)
+            waveFile.setsampwidth(Audio.get_sample_size(FORMAT))
+            waveFile.setframerate(RATE)
+            waveFile.writeframes(b''.join(Frames))
+            waveFile.close()
 
 
 
@@ -124,6 +151,9 @@ class AddProfile(tk.Frame):
 class Identify(tk.Frame):
 
     def __init__(self, parent, controller):
+        def _importFile():
+
+
         tk.Frame.__init__(self, parent)
         self.controller = controller
         label = tk.Label(self, text="Audio Processing", font=controller.title_font)
