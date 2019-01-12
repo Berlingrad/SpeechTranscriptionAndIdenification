@@ -1,0 +1,4 @@
+pyaudio
+wave
+websocket-client
+requests

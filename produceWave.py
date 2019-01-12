@@ -2,7 +2,7 @@ import json
 import wave
 import sys
 cacheFile = 'output.txt'
-audioFile = 'complete.wav'
+audioFile = 'grace.wav'
 indexFile = 'index.txt'
 
 if __name__ == '__main__':

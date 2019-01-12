@@ -9,6 +9,8 @@ from tkinter.filedialog import askopenfilename
 
 ##speakerProfiles = {'7f459648-ee2e-4903-91b4-0145a1bafb88':'grace'}
 
+LANG = 'zh-CN'
+
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
@@ -43,7 +45,7 @@ rest_host = 'https://westus.stt.speech.microsoft.com'
 #conversation 适合做交互回话
 #interactive 适合实现Rest API，单次应答
 path = '/speech/recognition/conversation/cognitiveservices/v1'
-params = '?language=zh-CN'
+params = '?language='+LANG
 
 #west URL
 url = api_host+path+params
@@ -56,7 +58,7 @@ class TIApp(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
 
-        self.title("Transcription and Identification")
+        self.title("Transcription and Speaker Identification")
         self.title_font = tkfont.Font(family='Helvetica', size=18, weight="bold", slant="italic")
         self.geometry("1024x576")
 
@@ -90,19 +92,83 @@ class TIApp(tk.Tk):
 class StartPage(tk.Frame):
 
     def __init__(self, parent, controller):
+
+
+        def change_dropdown(*args):
+            LANG = selected_locale.get()
+            with open("UserData", 'r') as ud:
+                jud = json.load(ud)
+                ##jud["locale"] = LANG
+            with open("UserData", 'w') as ud:
+                jud.update({"locale": LANG})
+                json.dump(jud, ud)
+
+            print(LANG)
+        def _saveKey():
+
+            SUB_KEY = idEntry.get()
+            with open("UserData", 'r') as ud:
+                jud = json.load(ud)
+            with open("UserData", 'w') as ud:
+                jud["ActivationKey"] = SUB_KEY
+                json.dump(jud, ud)
+
         tk.Frame.__init__(self, parent)
         self.controller = controller
         label = tk.Label(self, text="Welcome", font=controller.title_font)
-        label.pack(side="top", fill="x", pady=10)
+
+        label1 = tk.Label(self, text="Select a language locale: ")
+
+        label2 = tk.Label(self, text="Azure Speaker Recognition Sub Key: ")
+
+        idEntry = tk.Entry(self, width=40)
+
 
         button1 = tk.Button(self, text="Add a New Speaker Profile",
                             command=lambda: controller.show_frame("AddProfile"),
-                            width = 70)
-        button2 = tk.Button(self, text="Process an Audio",
+                            width = 80, height = 5)
+        button2 = tk.Button(self, text="Process an Audio File",
                             command=lambda: controller.show_frame("Identify"),
-                            width = 70)
-        button1.pack()
-        button2.pack()
+                            width = 80, height = 5)
+
+        saveButton = tk.Button(self, text="Save",
+                               command=_saveKey)
+
+
+        with open("UserData", 'r') as ud:
+            userdata = json.load(ud)
+            print(userdata)
+            if userdata["activationKey"] != 0:
+                idEntry.insert('end', userdata["activationKey"])
+
+        ##print(userdata.keyitems())
+        locale = userdata["locale"]
+        SUB_KEY = userdata["activationKey"] if userdata["activationKey"] != 0 else '583b8f19ffa24b27b6868f4c2e4b1611'
+
+        locales = {'en-US', 'zh-CN', 'es-ES', 'fr-FR'}
+        selected_locale= tk.StringVar(parent)
+
+        if locale != "":
+            selected_locale.set(locale)
+        else:
+            selected_locale.set('zh-CN')
+
+        popupMenu = tk.OptionMenu(self, selected_locale, *locales)
+
+        selected_locale.trace('w', change_dropdown)
+        ##print(LANG)
+
+
+        label.place(x=512, y = 30, anchor='center')
+        label1.place(x=470, y=80, anchor ='center')
+        popupMenu.place(x=600, y=80, anchor ='center')
+
+        label2.place(x=300, y=120, anchor='center')
+        idEntry.place(x=600, y=120, anchor='center')
+        saveButton.place(x=815, y=120, anchor='center')
+
+        button1.place(x=512, y=200, anchor = 'center')
+        button2.place(x=512, y=325, anchor = 'center')
 
 
 class AddProfile(tk.Frame):
@@ -112,7 +178,7 @@ class AddProfile(tk.Frame):
         def _createProfile():
             name = nameEntry.get()
             nameEntry.delete(0, 'end')
-            id = CreateProfile.create_profile(SUB_KEY, 'zh-CN')
+            id = CreateProfile.create_profile(SUB_KEY, LANG)
             print(type(id))
             
             with open('SpeakerProfiles.json') as jf:
@@ -263,9 +329,9 @@ class Identify(tk.Frame):
                                  command=_importFile)
         importButton.pack(side='top', fill ='y', pady = 10)
 
-        processButton = tk.Button(self, text="Process", width=20,
-                                  command = _importFile)
-        processButton.pack(side='top', fill='y', pady=10)
+        ##processButton = tk.Button(self, text="Process", width=20,
+        ##                          command = _importFile)
+        ##processButton.pack(side='top', fill='y', pady=10)
 
 if __name__ == "__main__":
     app = TIApp()
