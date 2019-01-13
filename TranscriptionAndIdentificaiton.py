@@ -1,6 +1,7 @@
 import tkinter as tk                # python 3
 from tkinter import font  as tkfont # python 3
-import pyaudio, wave, CreateProfile, json, EnrollProfile, utils, websocketSpeech, wave_utils, produceWave, time, threading, os, sys, IdentifyFile, PrintAllProfiles
+from tkinter import messagebox
+import pyaudio, wave, CreateProfile, json, EnrollProfile, utils, websocketSpeech, wave_utils, produceWave, Timer, threading, os, IdentifyFile, PrintAllProfiles
 
 from tkinter.filedialog import askopenfilename
 
@@ -178,37 +179,61 @@ class AddProfile(tk.Frame):
         def _createProfile():
             name = nameEntry.get()
             nameEntry.delete(0, 'end')
-            id = CreateProfile.create_profile(SUB_KEY, LANG)
-            print(type(id))
+            if name=="":
+                messagebox.showerror("Invalid Name", "A valid name is required to proceed")
+
+            else:
+
+                id = CreateProfile.create_profile(SUB_KEY, LANG)
+                print(type(id))
             
-            with open('SpeakerProfiles.json') as jf:
-                jDecoded = json.load(jf)
-            jDecoded.update({id:name})
-            with open('SpeakerProfiles.json', 'w') as jf:
-                json.dump(jDecoded, jf)
+                with open('SpeakerProfiles.json') as jf:
+                    jDecoded = json.load(jf)
+                jDecoded.update({id:name})
+                with open('SpeakerProfiles.json', 'w') as jf:
+                    json.dump(jDecoded, jf)
                 
-            EnrollProfile.enroll_profile(SUB_KEY, id, WAVE_OUTPUT_FILENAME, 'true')
+                EnrollProfile.enroll_profile(SUB_KEY, id, WAVE_OUTPUT_FILENAME, 'true')
+
+                timeLabel.configure(text="")
+
+                AudioTimer.reset()
 
 
         def _startRecord():
+
             stream = Audio.open(format=FORMAT, channels=CHANNELS,
                                 rate=RATE, input=True,
                                 frames_per_buffer=CHUNK)
+            AudioTimer.start()
             data = stream.read(CHUNK)
 
             Frames.append(data)
         def _stopRecord():
-            stream.stop_stream()
-            stream.close()
-            Audio.terminate()
+            try:
+                stream.stop_stream()
+                stream.close()
+                Audio.terminate()
+                timeStr = AudioTimer.stop()
+                print(timeStr)
+                print(AudioTimer.elapsetime)
 
-            waveFile = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
-            waveFile.setnchannels(CHANNELS)
-            waveFile.setsampwidth(Audio.get_sample_size(FORMAT))
-            waveFile.setframerate(RATE)
-            waveFile.writeframes(b''.join(Frames))
-            waveFile.close()
+                waveFile = wave.open(WAVE_OUTPUT_FILENAME, 'wb')
+                waveFile.setnchannels(CHANNELS)
+                waveFile.setsampwidth(Audio.get_sample_size(FORMAT))
+                waveFile.setframerate(RATE)
+                waveFile.writeframes(b''.join(Frames))
+                waveFile.close()
 
+                assert(AudioTimer.elapsetime > 10)
+                timeLabel.configure(text="Audio Recorded! Profile Audio Length: "+timeStr+"\n Press Create to upload")
+            except AssertionError:
+                messagebox.showerror("Incompete Recording", "Profile audio need to be at least 10s. Yours is "+timeStr)
+            except:
+                messagebox.showerror("Record Fail", "Unable to record an audio")
+
+
+        AudioTimer = Timer.Timer()
 
 
         tk.Frame.__init__(self, parent)
@@ -217,40 +242,49 @@ class AddProfile(tk.Frame):
         label.pack(side="top", fill="x", pady=10)
 
         nameLabel =tk.Label(self, text="Name:")
-        nameLabel.pack(side='top')
 
         nameEntry = tk.Entry(self)
-        nameEntry.pack(side='top')
+
+        timeLabel = tk.Label(self, text="")
 
 
-        recordButton = tk.Button(self, text="Record", width=50,
+        recordButton = tk.Button(self, text="Record", width=30,
                                  command=_startRecord)
-        recordButton.pack(side='left')
 
-        stopButton = tk.Button(self, text="Stop", width=50,
+        stopButton = tk.Button(self, text="Stop", width=30,
                                command=_stopRecord)
-        stopButton.pack(side='right')
-
-        createButton = tk.Button(self, text="Create Profile", width=50,
-                                 command=_createProfile)
-        createButton.pack(side='bottom')
-
-        button = tk.Button(self, text="Go Back to Main Menu", width=50,
+        
+        button = tk.Button(self, text="Go Back to Main Menu", width=65,
                            command=lambda: controller.show_frame("StartPage"))
-        button.pack(side='bottom')
 
 
+        createButton = tk.Button(self, text="Create Profile", width=65,
+                                 command=_createProfile)
+
+        nameLabel.place(x=425, y=70, anchor ='center')
+        nameEntry.place(x=535, y=70, anchor ='center')
+        recordButton.place(x=375, y=320, anchor='center')
+        stopButton.place(x=650, y=320, anchor='center')
+        timeLabel.place(x=512, y=200, anchor='center')
+        button.pack(side='bottom', pady=10)
+        createButton.pack(side='bottom', pady=10)
 
 
 class Identify(tk.Frame):
 
     def __init__(self, parent, controller):
         def _importFile():
+
+
             IMPORTED_FILE = askopenfilename()
             print("Selected file: ", IMPORTED_FILE)
             ##print(type(IMPORTED_FILE))
 
         ##def _process():
+            display.config(state='normal')
+            display.delete(1.0, 'end')
+            display.insert('end', "Processing. Please Wait")
+            display.config(state='disable')
 
             print(IMPORTED_FILE)
             webCMD = 'python websocketSpeech.py '+IMPORTED_FILE
@@ -278,7 +312,7 @@ class Identify(tk.Frame):
                    i += 1
 
             indexFp.close()
-            print("exe")
+
             display.config(state='normal')
             display.delete(1.0, 'end')
             with open(indexFile, 'r') as c:
